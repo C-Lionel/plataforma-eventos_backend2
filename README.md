@@ -172,4 +172,4 @@ Esta corresponde a la primera pre-entrega del proyecto de **Backend II**, donde 
 
 Lionel Cancellieri
 
-Proyecto desarrollado para la materia **Backend II**.
+Proyecto desarrollado para el curso **Programación Backend II: Diseño y Arquitectura Backend**.
