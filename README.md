@@ -21,7 +21,7 @@ El proyecto permitirá:
 
 - Node.js
 - Express.js
-- MongoDB
+- MongoDB Atlas
 - Mongoose
 - Dotenv
 - JavaScript (ES Modules)
@@ -31,7 +31,7 @@ El proyecto permitirá:
 Clonar el repositorio:
 
 ```bash
-git clone https://github.com/TU-USUARIO/plataforma-eventos_backend.git
+git clone https://github.com/C-Lionel/plataforma-eventos_backend2
 ```
 
 Ingresar al proyecto:
@@ -50,10 +50,12 @@ npm install
 
 Crear un archivo `.env` tomando como referencia el archivo `.env.example`.
 
+Ejemplo:
+
 ```env
 PORT=8080
 NODE_ENV=development
-MONGO_URL=mongodb://localhost:27017/plataforma_eventos
+MONGO_URL=mongodb+srv://usuario:contraseña@cluster.mongodb.net/plataforma_eventos
 JWT_SECRET=tu_clave_secreta
 ```
 
@@ -71,34 +73,43 @@ Modo producción:
 npm start
 ```
 
+## Base de datos
+
+El proyecto utiliza **MongoDB Atlas** como sistema de persistencia y **Mongoose** como ODM para la comunicación con la base de datos.
+
 ## Estructura del proyecto
 
 ```text
-src/
-├── config/
-├── controllers/
-├── dao/
-├── middlewares/
-├── models/
-├── repositories/
-├── routes/
-├── services/
-├── utils/
+.
 ├── app.js
-└── server.js
+├── server.js
+├── src/
+│   ├── config/
+│   ├── controllers/
+│   ├── dao/
+│   ├── middlewares/
+│   ├── models/
+│   ├── repositories/
+│   ├── routes/
+│   ├── services/
+│   └── utils/
+├── .env.example
+├── .gitignore
+├── package.json
+└── README.md
 ```
 
 ## Arquitectura
 
-El proyecto se encuentra organizado mediante una arquitectura por capas para facilitar el mantenimiento y la escalabilidad.
+El proyecto implementa una arquitectura por capas para separar responsabilidades y facilitar el mantenimiento.
 
 - **Routes:** definen los endpoints de la API.
 - **Controllers:** reciben las peticiones HTTP y generan las respuestas.
-- **Services:** contendrán la lógica de negocio en futuras entregas.
-- **Repositories:** actuarán como intermediarios entre los servicios y el acceso a datos.
-- **DAO:** contendrá la lógica de acceso a la base de datos.
-- **Models:** definen los modelos de MongoDB mediante Mongoose.
-- **Middlewares:** funciones intermedias utilizadas por Express.
+- **Services:** contienen la lógica de negocio.
+- **Repositories:** intermedian entre los servicios y la capa de persistencia.
+- **DAO:** realizan el acceso a la base de datos mediante Mongoose.
+- **Models:** definen los modelos de MongoDB.
+- **Middlewares:** manejan funcionalidades comunes como el tratamiento global de errores.
 - **Config:** configuración general de la aplicación.
 - **Utils:** utilidades reutilizables.
 
@@ -121,18 +132,41 @@ Respuesta:
 
 ---
 
-### Eventos
+### Obtener eventos
 
 ```http
 GET /api/events
 ```
 
-Respuesta:
+Obtiene la lista de eventos almacenados en MongoDB.
+
+---
+
+### Obtener un evento por ID
+
+```http
+GET /api/events/:id
+```
+
+Obtiene un evento específico mediante su identificador.
+
+---
+
+### Crear un evento
+
+```http
+POST /api/events
+```
+
+Ejemplo del cuerpo de la petición:
 
 ```json
 {
-  "status": "success",
-  "payload": []
+  "title": "Recital de Rock",
+  "description": "Evento musical",
+  "date": "2026-08-15",
+  "location": "Buenos Aires",
+  "capacity": 500
 }
 ```
 
@@ -153,14 +187,24 @@ Respuesta:
 }
 ```
 
-Esta ruta se encuentra preparada para futuras implementaciones de autenticación mediante JWT y Passport.
+Esta ruta constituye la base para incorporar autenticación mediante JWT y Passport en futuras entregas.
 
 ## Estado del proyecto
 
-Esta corresponde a la primera pre-entrega del proyecto de **Backend II**, donde se implementó la estructura base de la API REST, preparada para incorporar en futuras entregas funcionalidades como:
+En esta etapa se encuentra implementada la estructura arquitectónica inicial del proyecto, incluyendo:
+
+- Configuración del servidor Express.
+- Variables de entorno mediante Dotenv.
+- Conexión a MongoDB Atlas utilizando Mongoose.
+- Arquitectura por capas (Controller → Service → Repository → DAO).
+- Middleware global para el manejo de errores.
+- Modelos base de User y Event.
+- Endpoints iniciales para eventos y sesiones.
+
+Las próximas entregas incorporarán:
 
 - Registro e inicio de sesión.
-- Autenticación con JWT.
+- Autenticación mediante JWT.
 - Passport.
 - Roles y autorización.
 - Gestión completa de eventos.

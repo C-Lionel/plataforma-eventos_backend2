@@ -1,6 +1,7 @@
 import express from "express";
-import eventsRouter from "./routes/events.router.js";
-import sessionsRouter from "./routes/sessions.router.js";
+import eventsRouter from "./src/routes/events.router.js";
+import sessionsRouter from "./src/routes/sessions.router.js";
+import { errorHandler } from "./src/middlewares/error.middleware.js";
 
 const app = express();
 
@@ -18,5 +19,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/events", eventsRouter);
 app.use("/api/sessions", sessionsRouter);
+
+app.use(errorHandler);
 
 export default app;
