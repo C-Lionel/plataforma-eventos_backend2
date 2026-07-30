@@ -11,10 +11,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Ruta para verificar el estado del servidor
 app.get("/api/health", (req, res) => {
-    res.status(200).json({
-        status: "ok",
-        message: "Servidor activo"
-    });
+  res.status(200).json({
+      status: "ok",
+      message: "Servidor activo"
+  });
 });
 
 app.use("/api/events", eventsRouter);

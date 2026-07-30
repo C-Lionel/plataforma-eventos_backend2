@@ -37,7 +37,7 @@ git clone https://github.com/C-Lionel/plataforma-eventos_backend2
 Ingresar al proyecto:
 
 ```bash
-cd plataforma-eventos_backend
+cd plataforma-eventos_backend2
 ```
 
 Instalar las dependencias:
