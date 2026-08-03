@@ -4,18 +4,18 @@ API REST desarrollada para la gestión de eventos musicales y recitales.
 
 ## Temática
 
-Plataforma de gestión de eventos musicales y recitales, donde los usuarios podrán registrarse, consultar eventos disponibles e inscribirse, mientras que los administradores podrán crear eventos, gestionar cupos y controlar las inscripciones.
+Plataforma de gestión de eventos musicales y recitales donde los usuarios pueden registrarse, consultar eventos disponibles e inscribirse, mientras que los administradores podrán crear eventos, gestionar cupos y controlar las inscripciones.
 
 ## Objetivos
 
 El proyecto permitirá:
 
-- Registro e inicio de sesión de usuarios.
+- Registro seguro de usuarios.
 - Gestión de eventos musicales.
 - Inscripción de usuarios a eventos.
 - Administración de eventos.
 - Control de cupos disponibles.
-- Gestión de roles (Administrador y Usuario).
+- Gestión de roles (Administrador, Organizador y Usuario).
 
 ## Tecnologías utilizadas
 
@@ -23,6 +23,7 @@ El proyecto permitirá:
 - Express.js
 - MongoDB Atlas
 - Mongoose
+- Bcrypt
 - Dotenv
 - JavaScript (ES Modules)
 
@@ -31,7 +32,7 @@ El proyecto permitirá:
 Clonar el repositorio:
 
 ```bash
-git clone https://github.com/C-Lionel/plataforma-eventos_backend2
+git clone https://github.com/C-Lionel/plataforma-eventos_backend2.git
 ```
 
 Ingresar al proyecto:
@@ -105,17 +106,19 @@ El proyecto implementa una arquitectura por capas para separar responsabilidades
 
 - **Routes:** definen los endpoints de la API.
 - **Controllers:** reciben las peticiones HTTP y generan las respuestas.
-- **Services:** contienen la lógica de negocio.
+- **Services:** contienen la lógica de negocio y las validaciones.
 - **Repositories:** intermedian entre los servicios y la capa de persistencia.
 - **DAO:** realizan el acceso a la base de datos mediante Mongoose.
 - **Models:** definen los modelos de MongoDB.
-- **Middlewares:** manejan funcionalidades comunes como el tratamiento global de errores.
+- **Middlewares:** manejan funcionalidades comunes, como el tratamiento global de errores.
 - **Config:** configuración general de la aplicación.
-- **Utils:** utilidades reutilizables.
+- **Utils:** contiene funciones reutilizables, como el hash de contraseñas mediante bcrypt.
 
-## Endpoints disponibles
+---
 
-### Estado del servidor
+# Endpoints disponibles
+
+## Estado del servidor
 
 ```http
 GET /api/health
@@ -132,7 +135,7 @@ Respuesta:
 
 ---
 
-### Obtener eventos
+## Obtener eventos
 
 ```http
 GET /api/events
@@ -142,7 +145,7 @@ Obtiene la lista de eventos almacenados en MongoDB.
 
 ---
 
-### Obtener un evento por ID
+## Obtener un evento por ID
 
 ```http
 GET /api/events/:id
@@ -152,7 +155,7 @@ Obtiene un evento específico mediante su identificador.
 
 ---
 
-### Crear un evento
+## Crear un evento
 
 ```http
 POST /api/events
@@ -172,48 +175,90 @@ Ejemplo del cuerpo de la petición:
 
 ---
 
-### Sessions
+## Actualizar un evento
 
 ```http
-GET /api/sessions
+PUT /api/events/:id
 ```
 
-Respuesta:
+Permite modificar la información de un evento existente.
+
+---
+
+## Eliminar un evento
+
+```http
+DELETE /api/events/:id
+```
+
+Permite eliminar un evento de la base de datos.
+
+---
+
+## Registrar usuario
+
+```http
+POST /api/sessions/register
+```
+
+Permite registrar un nuevo usuario de forma segura.
+
+### Body esperado
+
+```json
+{
+  "first_name": "Ana",
+  "last_name": "Pérez",
+  "email": "Ana@Mail.com ",
+  "password": "Secreta123"
+}
+```
+
+### Respuesta exitosa
 
 ```json
 {
   "status": "success",
-  "message": "Ruta de sesiones disponible"
+  "payload": {
+    "id": "665f2a...",
+    "first_name": "Ana",
+    "last_name": "Pérez",
+    "email": "ana@mail.com",
+    "role": "user"
+  }
 }
 ```
 
-Esta ruta constituye la base para incorporar autenticación mediante JWT y Passport en futuras entregas.
+### Validaciones implementadas
 
-## Estado del proyecto
+- Todos los campos son obligatorios.
+- El email debe tener un formato válido.
+- El email se normaliza utilizando `trim()` y `toLowerCase()`.
+- No se permiten usuarios con emails duplicados.
+- La contraseña debe tener una longitud mínima de 8 caracteres.
+- La contraseña se almacena hasheada mediante **bcrypt**.
+- La respuesta nunca devuelve la contraseña.
 
-En esta etapa se encuentra implementada la estructura arquitectónica inicial del proyecto, incluyendo:
+---
+
+# Estado del proyecto
+
+Actualmente el proyecto cuenta con:
 
 - Configuración del servidor Express.
 - Variables de entorno mediante Dotenv.
 - Conexión a MongoDB Atlas utilizando Mongoose.
-- Arquitectura por capas (Controller → Service → Repository → DAO).
+- Arquitectura por capas (Route → Controller → Service → Repository → DAO).
 - Middleware global para el manejo de errores.
-- Modelos base de User y Event.
-- Endpoints iniciales para eventos y sesiones.
-
-Las próximas entregas incorporarán:
-
-- Registro e inicio de sesión.
-- Autenticación mediante JWT.
-- Passport.
-- Roles y autorización.
-- Gestión completa de eventos.
-- Inscripciones.
-- Control de capacidad.
-- Notificaciones.
+- Modelo `Event`.
+- Modelo `User`.
+- CRUD básico de eventos.
+- Registro seguro de usuarios.
+- Hash de contraseñas mediante bcrypt.
+- Validación de datos y prevención de usuarios duplicados.
 
 ## Autor
 
-Lionel Cancellieri
+**Lionel Cancellieri**
 
-Proyecto desarrollado para el curso **Programación Backend II: Diseño y Arquitectura Backend**.
+Proyecto desarrollado para la materia **Programación Backend II: Diseño y Arquitectura Backend**.
