@@ -1,5 +1,6 @@
 import { usersRepository } from "../repositories/users.repository.js";
-import { hashPassword } from "../utils/hash.js";
+import { hashPassword, comparePassword } from "../utils/hash.js";
+import { generateToken } from "../utils/jwt.js";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -61,6 +62,45 @@ class SessionsService {
       role: createdUser.role
     };
   }
+
+  async login(credentials) {
+  const { email, password } = credentials;
+
+  if (!email || !password) {
+    const error = new Error("Faltan campos obligatorios");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const user = await usersRepository.getByEmail(normalizedEmail);
+
+  if (!user) {
+    const error = new Error("Credenciales inválidas");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const isValidPassword = await comparePassword(
+    password,
+    user.password
+  );
+
+  if (!isValidPassword) {
+    const error = new Error("Credenciales inválidas");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const token = generateToken({
+    id: user._id,
+    email: user.email,
+    role: user.role
+  });
+
+  return token;
+}
 }
 
 export const sessionsService = new SessionsService();
