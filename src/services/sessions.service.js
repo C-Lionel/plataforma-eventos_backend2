@@ -1,106 +1,12 @@
-import { usersRepository } from "../repositories/users.repository.js";
-import { hashPassword, comparePassword } from "../utils/hash.js";
-import { generateToken } from "../utils/jwt.js";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MIN_PASSWORD_LENGTH = 8;
-
 class SessionsService {
-  async register(userData) {
-    const {
-      first_name,
-      last_name,
-      email,
-      password
-    } = userData;
-
-    if (!first_name || !last_name || !email || !password) {
-      const error = new Error("Faltan campos obligatorios");
-      error.statusCode = 400;
-      throw error;
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
-
-    if (!EMAIL_REGEX.test(normalizedEmail)) {
-      const error = new Error("El formato del email no es válido");
-      error.statusCode = 400;
-      throw error;
-    }
-
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      const error = new Error(
-        `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`
-      );
-      error.statusCode = 400;
-      throw error;
-    }
-
-    const existingUser = await usersRepository.getByEmail(normalizedEmail);
-
-    if (existingUser) {
-      const error = new Error("El email ya está registrado");
-      error.statusCode = 409;
-      throw error;
-    }
-
-    const hashedPassword = await hashPassword(password);
-
-    const createdUser = await usersRepository.create({
-      first_name: first_name.trim(),
-      last_name: last_name.trim(),
-      email: normalizedEmail,
-      password: hashedPassword,
-      role: "user"
-    });
-
+  
+  buildTokenPayload(user) {
     return {
-      id: createdUser._id,
-      first_name: createdUser.first_name,
-      last_name: createdUser.last_name,
-      email: createdUser.email,
-      role: createdUser.role
+      id: user.id,
+      email: user.email,
+      role: user.role
     };
   }
-
-  async login(credentials) {
-  const { email, password } = credentials;
-
-  if (!email || !password) {
-    const error = new Error("Faltan campos obligatorios");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-
-  const user = await usersRepository.getByEmail(normalizedEmail);
-
-  if (!user) {
-    const error = new Error("Credenciales inválidas");
-    error.statusCode = 401;
-    throw error;
-  }
-
-  const isValidPassword = await comparePassword(
-    password,
-    user.password
-  );
-
-  if (!isValidPassword) {
-    const error = new Error("Credenciales inválidas");
-    error.statusCode = 401;
-    throw error;
-  }
-
-  const token = generateToken({
-    id: user._id,
-    email: user.email,
-    role: user.role
-  });
-
-  return token;
-}
 }
 
 export const sessionsService = new SessionsService();

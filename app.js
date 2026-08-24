@@ -1,5 +1,8 @@
 import express from "express";
+import passport from "passport";
 import cookieParser from "cookie-parser";
+
+import { initializePassport } from "./src/config/passport.config.js";
 import eventsRouter from "./src/routes/events.router.js";
 import sessionsRouter from "./src/routes/sessions.router.js";
 import { errorHandler } from "./src/middlewares/error.middleware.js";
@@ -11,11 +14,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Passport
+initializePassport();
+app.use(passport.initialize());
+
 // Ruta para verificar el estado del servidor
 app.get("/api/health", (req, res) => {
   res.status(200).json({
-      status: "ok",
-      message: "Servidor activo"
+    status: "ok",
+    message: "Servidor activo"
   });
 });
 
