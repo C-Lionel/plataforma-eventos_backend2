@@ -12,6 +12,17 @@ class EventsDAO {
   async create(data) {
     return EventModel.create(data);
   }
+
+  async update(id, data) {
+    return EventModel.findByIdAndUpdate(
+      id,
+      data,
+      {
+        new: true,
+        runValidators: true
+      }
+    ).lean();
+  }
 }
 
 export const eventsDAO = new EventsDAO();

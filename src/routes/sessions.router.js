@@ -1,15 +1,19 @@
 import { Router } from "express";
 
+import { authenticate } from "../middlewares/passport.middleware.js";
+import { auth } from "../middlewares/auth.middleware.js";
+import { authorize } from "../middlewares/authorize.middleware.js";
+
 import {
+  getAllUsers,
   getCurrentUser,
   loginUser,
   logoutUser,
   registerUser
 } from "../controllers/sessions.controller.js";
 
-import { authenticate } from "../middlewares/passport.middleware.js";
-
 const router = Router();
+
 
 router.post(
   "/register",
@@ -25,8 +29,15 @@ router.post(
 
 router.get(
   "/current",
-  authenticate("current"),
+  auth,
   getCurrentUser
+);
+
+router.get(
+  "/users",
+  auth,
+  authorize("admin"),
+  getAllUsers
 );
 
 router.post("/logout", logoutUser);

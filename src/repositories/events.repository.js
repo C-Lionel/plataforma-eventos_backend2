@@ -12,6 +12,10 @@ class EventsRepository {
   async create(data) {
     return eventsDAO.create(data);
   }
+  
+  async update(id, data) {
+    return eventsDAO.update(id, data);
+  }
 }
 
 export const eventsRepository = new EventsRepository();

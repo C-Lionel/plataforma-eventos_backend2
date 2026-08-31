@@ -9,7 +9,9 @@ class EventsService {
     const event = await eventsRepository.getById(id);
 
     if (!event) {
-      throw new Error("Evento no encontrado");
+      const error = new Error("Evento no encontrado");
+      error.statusCode = 404;
+      throw error;
     }
 
     return event;
@@ -17,14 +19,30 @@ class EventsService {
 
   async create(data) {
     if (!data.title) {
-      throw new Error("El título del evento es obligatorio");
+      const error = new Error("El título del evento es obligatorio");
+      error.statusCode = 400;
+      throw error;
     }
 
     if (!data.capacity || data.capacity <= 0) {
-      throw new Error("La capacidad debe ser mayor a cero");
+      const error = new Error("La capacidad debe ser mayor a cero");
+      error.statusCode = 400;
+      throw error;
     }
 
     return eventsRepository.create(data);
+  }
+
+  async update(id, data) {
+    const event = await eventsRepository.getById(id);
+
+    if (!event) {
+      const error = new Error("Evento no encontrado");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return eventsRepository.update(id, data);
   }
 }
 
