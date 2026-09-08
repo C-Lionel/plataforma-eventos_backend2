@@ -17,8 +17,15 @@ El proyecto permite:
 - Gestión de sesiones mediante cookies HTTP Only.
 - Autorización basada en roles.
 - Diferenciación entre usuarios `user`, `organizer` y `admin`.
-- Gestión de eventos musicales.
+- Gestión completa de eventos musicales.
+- Asociación automática entre eventos y organizadores.
 - Control de propiedad de eventos.
+- Gestión del ciclo de vida de los eventos.
+- Cancelación lógica de eventos.
+- Filtrado de eventos.
+- Paginación de resultados.
+- Ordenamiento de eventos.
+- Validaciones de negocio centralizadas en la capa de servicios.
 - Rutas administrativas protegidas.
 - Preparación para incorporar proveedores externos de autenticación en futuras etapas.
 
@@ -150,8 +157,8 @@ El proyecto implementa una arquitectura por capas para separar responsabilidades
 
 - **Routes:** definen endpoints y aplican los middlewares necesarios.
 - **Controllers:** reciben peticiones HTTP y generan respuestas.
-- **Services:** contienen lógica de negocio reutilizable.
-- **Repositories:** intermedian entre la aplicación y la persistencia.
+- **Services:** contienen la lógica de negocio y validaciones.
+- **Repositories:** intermedian entre la lógica de negocio y la persistencia.
 - **DAO:** realizan el acceso a MongoDB mediante Mongoose.
 - **Models:** definen las entidades persistidas.
 - **DTO:** controlan qué información se expone y evitan devolver datos sensibles.
@@ -176,6 +183,8 @@ DAO
   ↓
 MongoDB
 ```
+
+La lógica de negocio de los eventos se encuentra en `events.service.js`, mientras que el acceso a datos se realiza desde `events.repository.js` y `events.dao.js`.
 
 # Autenticación con Passport.js
 
@@ -276,9 +285,9 @@ El JWT no contiene la contraseña.
 
 La aplicación utiliza tres roles:
 
-- `user`: usuario estándar.
-- `organizer`: puede crear eventos y modificar únicamente sus propios eventos.
-- `admin`: cuenta con permisos administrativos y puede modificar cualquier evento.
+- `user`: usuario estándar. Puede consultar eventos.
+- `organizer`: puede crear eventos y administrar únicamente sus propios eventos.
+- `admin`: cuenta con permisos administrativos y puede administrar cualquier evento.
 
 El modelo `User` restringe el campo `role` a:
 
@@ -294,10 +303,13 @@ y utiliza `user` como valor por defecto.
 
 | Acción | `user` | `organizer` | `admin` |
 |---|:---:|:---:|:---:|
-| Consultar eventos publicados | ✅ | ✅ | ✅ |
+| Consultar eventos | ✅ | ✅ | ✅ |
+| Consultar evento por ID | ✅ | ✅ | ✅ |
 | Crear eventos | ❌ | ✅ | ✅ |
 | Modificar eventos propios | ❌ | ✅ | ✅ |
-| Modificar cualquier evento | ❌ | ❌ | ✅ |
+| Modificar eventos ajenos | ❌ | ❌ | ✅ |
+| Cambiar estado de eventos propios | ❌ | ✅ | ✅ |
+| Cambiar estado de eventos ajenos | ❌ | ❌ | ✅ |
 | Ver todos los usuarios | ❌ | ❌ | ✅ |
 
 ## Middleware de autenticación
@@ -344,7 +356,7 @@ con estado `403 Forbidden`.
 src/middlewares/authorizeEventOwnerOrAdmin.middleware.js
 ```
 
-Este middleware protege la modificación de eventos:
+Este middleware protege la modificación y el cambio de estado de eventos:
 
 - Busca el evento solicitado.
 - Permite continuar a un `admin`.
@@ -354,7 +366,7 @@ Este middleware protege la modificación de eventos:
 
 Al crear un evento, el campo `organizer` se obtiene de `req.user.id`; no se confía en un valor enviado por el cliente.
 
-Al actualizar un evento, el campo `organizer` se excluye de los datos modificables para impedir cambiar la propiedad mediante el body.
+Al actualizar un evento, los campos `organizer` y `status` se excluyen de los datos modificables. De esta manera, el propietario no puede cambiarse mediante el body y el estado se administra exclusivamente mediante su endpoint específico.
 
 # Diferencia entre 401 y 403
 
@@ -388,6 +400,7 @@ Ejemplos:
 - Un `user` intenta crear un evento.
 - Un `organizer` intenta acceder al listado administrativo de usuarios.
 - Un `organizer` intenta modificar el evento de otro organizer.
+- Un `organizer` intenta cambiar el estado de un evento ajeno.
 
 Respuesta:
 
@@ -398,15 +411,109 @@ Respuesta:
 }
 ```
 
+# Entidad Event
+
+Los eventos se almacenan mediante el modelo `Event`.
+
+## Campos
+
+| Campo | Tipo | Requerido | Descripción |
+|---|---|:---:|---|
+| `title` | String | Sí | Título del evento |
+| `description` | String | Sí | Descripción del evento |
+| `category` | String | Sí | Categoría del evento |
+| `date` | Date | Sí | Fecha y hora del evento |
+| `location` | String | Sí | Ubicación |
+| `capacity` | Number | Sí | Capacidad máxima |
+| `price` | Number | Sí | Precio del evento |
+| `status` | String | Sí | Estado actual |
+| `organizer` | ObjectId | Sí | Referencia al usuario organizador |
+
+`organizer` referencia al modelo `User`.
+
+## Estados del evento
+
+Los estados permitidos son:
+
+```text
+draft
+published
+cancelled
+finished
+```
+
+El estado inicial de un nuevo evento es:
+
+```text
+draft
+```
+
+Los estados representan:
+
+- `draft`: evento creado pero todavía no publicado.
+- `published`: evento publicado.
+- `cancelled`: evento cancelado.
+- `finished`: evento finalizado.
+
+# Reglas de negocio de eventos
+
+Las reglas de negocio se encuentran centralizadas en `events.service.js`.
+
+## Creación
+
+Para crear un evento:
+
+- `title` es obligatorio.
+- `description` es obligatorio.
+- `category` es obligatoria.
+- `location` es obligatoria.
+- `date` es obligatoria.
+- La fecha debe tener un formato válido.
+- La fecha debe ser futura.
+- `capacity` debe ser mayor a `0`.
+- `price` debe ser mayor o igual a `0`.
+- El organizador se obtiene automáticamente desde `req.user.id`.
+- No se permite confiar en un `organizer` enviado por el cliente.
+
+## Modificación
+
+Al modificar un evento:
+
+- Solo puede hacerlo su `organizer` o un `admin`.
+- Un evento con estado `cancelled` no puede modificarse.
+- Si se modifica `capacity`, debe continuar siendo mayor a `0`.
+- Si se modifica `price`, no puede ser negativo.
+- `organizer` no puede modificarse mediante `PUT`.
+- `status` no puede modificarse mediante `PUT`.
+
+## Cambio de estado
+
+Los cambios de estado se realizan mediante:
+
+```http
+PATCH /api/events/:id/status
+```
+
+Reglas:
+
+- Solo se aceptan `draft`, `published`, `cancelled` y `finished`.
+- Solo el propietario del evento o un `admin` puede cambiar su estado.
+- Un evento cancelado no puede volver a cambiar de estado.
+- Un evento finalizado no puede publicarse nuevamente.
+- Un evento cuya fecha ya pasó no puede publicarse.
+- La cancelación es lógica: el evento permanece almacenado con `status: "cancelled"`.
+- No se elimina físicamente el evento de MongoDB.
+
 # Endpoints disponibles
 
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
 | GET | `/api/health` | Público | Verifica el estado del servidor |
-| GET | `/api/events` | Público | Obtiene todos los eventos |
+| GET | `/api/events` | Público | Lista eventos con filtros, paginación y ordenamiento |
 | GET | `/api/events/:id` | Público | Obtiene un evento por ID |
 | POST | `/api/events` | `organizer`, `admin` | Crea un evento |
 | PUT | `/api/events/:id` | `organizer` propietario, `admin` | Actualiza un evento |
+| PATCH | `/api/events/:id/status` | `organizer` propietario, `admin` | Cambia el estado de un evento |
 | POST | `/api/sessions/register` | Público | Registra un usuario |
 | POST | `/api/sessions/login` | Público | Inicia sesión y genera la cookie |
 | GET | `/api/sessions/current` | Autenticado | Devuelve el usuario autenticado |
@@ -423,6 +530,109 @@ GET /api/events
 
 Ruta pública.
 
+El listado admite filtros, paginación y ordenamiento.
+
+### Filtros disponibles
+
+| Parámetro | Descripción |
+|---|---|
+| `status` | Filtra por estado |
+| `category` | Filtra por categoría |
+| `location` | Filtra por ubicación |
+| `dateFrom` | Fecha mínima |
+| `dateTo` | Fecha máxima |
+| `page` | Página solicitada |
+| `limit` | Cantidad de resultados por página |
+| `sort` | Campo utilizado para ordenar |
+
+Valores por defecto:
+
+```text
+page = 1
+limit = 10
+sort = date
+```
+
+`page` y `limit` deben ser números enteros mayores o iguales a `1`.
+
+`dateFrom` y `dateTo` deben representar fechas válidas.
+
+### Ejemplo con filtros
+
+```http
+GET /api/events?status=published&category=workshop&page=1&limit=5&sort=date
+```
+
+También pueden filtrarse eventos por rango de fechas:
+
+```http
+GET /api/events?dateFrom=2026-10-01&dateTo=2026-12-31
+```
+
+### Response 200
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "_id": "6690...",
+      "title": "Workshop de Express",
+      "description": "Workshop práctico",
+      "category": "workshop",
+      "date": "2026-12-28T18:00:00.000Z",
+      "location": "Rosario",
+      "capacity": 80,
+      "price": 12000,
+      "status": "published",
+      "organizer": "665f2a..."
+    }
+  ],
+  "page": 1,
+  "limit": 5,
+  "total": 1,
+  "totalPages": 1
+}
+```
+
+### Paginación inválida
+
+Ejemplo:
+
+```http
+GET /api/events?page=0
+```
+
+Respuesta:
+
+```json
+{
+  "status": "error",
+  "message": "La página debe ser un número entero mayor o igual a 1"
+}
+```
+
+con estado `400 Bad Request`.
+
+### Fecha de filtro inválida
+
+Ejemplo:
+
+```http
+GET /api/events?dateFrom=pepe
+```
+
+Respuesta:
+
+```json
+{
+  "status": "error",
+  "message": "dateFrom tiene un formato de fecha inválido"
+}
+```
+
+con estado `400 Bad Request`.
+
 ## Obtener un evento por ID
 
 ```http
@@ -430,6 +640,17 @@ GET /api/events/:id
 ```
 
 Ruta pública.
+
+Si el evento no existe:
+
+```json
+{
+  "status": "error",
+  "message": "Evento no encontrado"
+}
+```
+
+con estado `404 Not Found`.
 
 ## Crear un evento
 
@@ -443,15 +664,23 @@ Requiere autenticación y rol `organizer` o `admin`.
 
 ```json
 {
-  "title": "Recital de Rock",
-  "description": "Evento musical",
-  "date": "2026-10-15",
-  "location": "Buenos Aires",
-  "capacity": 500
+  "title": "Workshop de Node.js",
+  "description": "Workshop práctico de backend",
+  "category": "workshop",
+  "date": "2026-12-20T18:00:00.000Z",
+  "location": "Rosario",
+  "capacity": 100,
+  "price": 15000
 }
 ```
 
-El cliente no necesita enviar `organizer`. El backend utiliza `req.user.id`.
+El cliente no necesita enviar `organizer`. El backend utiliza:
+
+```javascript
+req.user.id
+```
+
+El estado inicial se establece como `draft`.
 
 ### Response 201
 
@@ -461,13 +690,47 @@ El cliente no necesita enviar `organizer`. El backend utiliza `req.user.id`.
   "message": "Evento creado correctamente",
   "payload": {
     "_id": "6690...",
-    "title": "Recital de Rock",
+    "title": "Workshop de Node.js",
+    "description": "Workshop práctico de backend",
+    "category": "workshop",
+    "date": "2026-12-20T18:00:00.000Z",
+    "location": "Rosario",
+    "capacity": 100,
+    "price": 15000,
+    "status": "draft",
     "organizer": "665f2a..."
   }
 }
 ```
 
-Un usuario con rol `user` recibe `403`.
+Un usuario con rol `user` recibe `403 Forbidden`.
+
+### Fecha inválida
+
+Si se intenta crear:
+
+```json
+{
+  "title": "Evento prueba",
+  "description": "Prueba",
+  "category": "workshop",
+  "date": "pepe",
+  "location": "Rosario",
+  "capacity": 100,
+  "price": 5000
+}
+```
+
+la API responde:
+
+```json
+{
+  "status": "error",
+  "message": "La fecha del evento tiene un formato inválido"
+}
+```
+
+con estado `400 Bad Request`.
 
 ## Actualizar un evento
 
@@ -485,12 +748,70 @@ Ejemplo:
 
 ```json
 {
-  "title": "Recital de Rock - Actualizado",
-  "capacity": 700
+  "title": "Workshop Avanzado de Node.js",
+  "capacity": 150,
+  "price": 18000
 }
 ```
 
-El campo `organizer` no puede modificarse mediante el body.
+Los campos `organizer` y `status` se excluyen de los datos modificables mediante este endpoint.
+
+Si el evento está cancelado, no puede modificarse.
+
+## Cambiar estado de un evento
+
+```http
+PATCH /api/events/:id/status
+```
+
+Requiere autenticación y que el usuario sea:
+
+- el `organizer` propietario del evento, o
+- un `admin`.
+
+### Request
+
+```json
+{
+  "status": "published"
+}
+```
+
+### Response 200
+
+```json
+{
+  "status": "success",
+  "message": "Estado del evento actualizado correctamente",
+  "payload": {
+    "_id": "6690...",
+    "title": "Workshop de Node.js",
+    "status": "published",
+    "organizer": "665f2a..."
+  }
+}
+```
+
+### Cancelar un evento
+
+```json
+{
+  "status": "cancelled"
+}
+```
+
+La cancelación no elimina el documento. El evento permanece almacenado con estado `cancelled`.
+
+Si se intenta volver a cambiar el estado de un evento cancelado:
+
+```json
+{
+  "status": "error",
+  "message": "No se puede cambiar el estado de un evento cancelado"
+}
+```
+
+con estado `400 Bad Request`.
 
 # Sesiones y autenticación
 
@@ -572,7 +893,7 @@ Credenciales incorrectas:
 }
 ```
 
-con estado `401`.
+con estado `401 Unauthorized`.
 
 ## Usuario autenticado
 
@@ -604,7 +925,7 @@ Sin sesión válida:
 }
 ```
 
-con estado `401`.
+con estado `401 Unauthorized`.
 
 ## Listar todos los usuarios
 
@@ -614,7 +935,7 @@ GET /api/sessions/users
 
 Ruta administrativa exclusiva para `admin`.
 
-Un `user` o `organizer` autenticado recibe `403`.
+Un `user` o `organizer` autenticado recibe `403 Forbidden`.
 
 La respuesta utiliza `UserDTO`, por lo que no expone contraseñas.
 
@@ -685,7 +1006,7 @@ authorize(...)
    └── SÍ → Controller
 
 
-MODIFICAR EVENTO
+MODIFICAR EVENTO / CAMBIAR ESTADO
    ↓
 auth
    ↓
@@ -695,12 +1016,26 @@ authorizeEventOwnerOrAdmin
    ↓
 ¿Admin o propietario?
    ├── NO → 403
-   └── SÍ → updateEvent
+   └── SÍ
+          ↓
+       Controller
+          ↓
+       Service
+          ↓
+   Reglas de negocio
+          ↓
+      Repository
+          ↓
+         DAO
+          ↓
+       MongoDB
 ```
 
-# Casos de prueba de autorización
+# Casos de prueba
 
-Antes de la entrega se verificaron los siguientes escenarios:
+Antes de la entrega se verificaron los escenarios de autenticación, autorización y lógica de negocio.
+
+## Autenticación y autorización
 
 | Caso | Resultado esperado |
 |---|---|
@@ -712,6 +1047,72 @@ Antes de la entrega se verificaron los siguientes escenarios:
 | `organizer` modifica un evento propio | `200 OK` |
 | `organizer` intenta modificar un evento ajeno | `403 Forbidden` |
 | `admin` modifica un evento ajeno | `200 OK` |
+
+## Lógica de negocio de eventos
+
+| Caso | Resultado esperado |
+|---|---|
+| `user` intenta crear un evento | `403 Forbidden` |
+| Crear evento con fecha pasada | `400 Bad Request` |
+| Crear evento con `capacity: 0` | `400 Bad Request` |
+| `organizer` modifica su propio evento | `200 OK` |
+| `organizer` modifica evento de otro organizer | `403 Forbidden` |
+| `admin` modifica evento de otro organizer | `200 OK` |
+| Intentar cambiar el estado de un evento cancelado | `400 Bad Request` |
+| Listar con `status`, `category`, `page` y `limit` | `200 OK` |
+| Consultar un evento inexistente | `404 Not Found` |
+| Utilizar `page=0` | `400 Bad Request` |
+| Utilizar `dateFrom` inválido | `400 Bad Request` |
+| Crear un evento con fecha inválida | `400 Bad Request` |
+
+Ejemplo utilizado para comprobar filtros y paginación:
+
+```http
+GET /api/events?status=published&category=workshop&page=1&limit=5
+```
+
+La respuesta incluye:
+
+```text
+data
+page
+limit
+total
+totalPages
+```
+
+# Manejo de errores
+
+La aplicación utiliza un middleware global:
+
+```text
+src/middlewares/error.middleware.js
+```
+
+Los services pueden generar errores de negocio asignando un código HTTP:
+
+```javascript
+const error = new Error("Evento no encontrado");
+error.statusCode = 404;
+throw error;
+```
+
+El controller captura el error y lo deriva mediante:
+
+```javascript
+next(error);
+```
+
+El middleware global genera una respuesta HTTP consistente.
+
+Ejemplo:
+
+```json
+{
+  "status": "error",
+  "message": "Evento no encontrado"
+}
+```
 
 # Seguridad
 
@@ -732,7 +1133,11 @@ El proyecto implementa:
 - Control de acceso por roles.
 - Control de propiedad de eventos.
 - El propietario de un evento no puede alterarse mediante el body.
+- El estado del evento no puede modificarse mediante el endpoint general de actualización.
+- El organizer se obtiene del usuario autenticado al crear eventos.
 - Payload JWT limitado a `id`, `email` y `role`.
+- Validaciones de negocio centralizadas en services.
+- Cancelación lógica de eventos.
 
 ## Seguridad del repositorio
 
@@ -791,9 +1196,20 @@ Actualmente el proyecto cuenta con:
 - Creación de eventos restringida a `organizer` y `admin`.
 - Asociación automática de eventos con su organizer.
 - Control de propiedad al modificar eventos.
+- Control de propiedad al cambiar estados.
 - `organizer` limitado a sus propios eventos.
 - `admin` habilitado para modificar cualquier evento.
-- Diferenciación entre errores `401` y `403`.
+- Entidad `Event` con categoría, precio, estado y organizer.
+- Estados `draft`, `published`, `cancelled` y `finished`.
+- Cancelación lógica de eventos.
+- Protección de eventos cancelados.
+- Filtros por estado, categoría, ubicación y fechas.
+- Paginación mediante `page` y `limit`.
+- Ordenamiento mediante `sort`.
+- Respuestas paginadas con `data`, `page`, `limit`, `total` y `totalPages`.
+- Validación de fechas.
+- Validación de capacidad y precio.
+- Diferenciación entre errores `401`, `403` y `404`.
 - Logout y eliminación de cookie.
 - Configuración preparada para proveedores externos.
 - `.env` y `node_modules/` excluidos mediante `.gitignore`.

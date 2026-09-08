@@ -1,8 +1,8 @@
 import { eventsDAO } from "../dao/events.dao.js";
 
 class EventsRepository {
-  async getAll() {
-    return eventsDAO.findAll();
+  async getAll(options) {
+    return eventsDAO.findAll(options);
   }
 
   async getById(id) {
@@ -12,7 +12,7 @@ class EventsRepository {
   async create(data) {
     return eventsDAO.create(data);
   }
-  
+
   async update(id, data) {
     return eventsDAO.update(id, data);
   }

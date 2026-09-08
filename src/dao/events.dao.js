@@ -1,8 +1,21 @@
 import { EventModel } from "../models/Event.js";
 
 class EventsDAO {
-  async findAll() {
-    return EventModel.find().lean();
+  async findAll({ filter, page, limit, sort }) {
+    const skip = (page - 1) * limit;
+
+    const data = await EventModel.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const total = await EventModel.countDocuments(filter);
+
+    return {
+      data,
+      total
+    };
   }
 
   async findById(id) {

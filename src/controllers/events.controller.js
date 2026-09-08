@@ -2,11 +2,11 @@ import { eventsService } from "../services/events.service.js";
 
 export const getEvents = async (req, res, next) => {
   try {
-    const events = await eventsService.getAll();
+    const result = await eventsService.getAll(req.query);
 
     res.status(200).json({
       status: "success",
-      payload: events
+      ...result
     });
   } catch (error) {
     next(error);
@@ -53,6 +53,7 @@ export const updateEvent = async (req, res, next) => {
 
     const {
       organizer,
+      status,
       ...updateData
     } = req.body;
 
@@ -64,6 +65,26 @@ export const updateEvent = async (req, res, next) => {
     res.status(200).json({
       status: "success",
       message: "Evento actualizado correctamente",
+      payload: event
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateEventStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const event = await eventsService.updateStatus(
+      id,
+      status
+    );
+
+    res.status(200).json({
+      status: "success",
+      message: "Estado del evento actualizado correctamente",
       payload: event
     });
   } catch (error) {
