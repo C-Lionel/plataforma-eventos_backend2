@@ -250,10 +250,18 @@ class EventsService {
       throw error;
     }
 
+    if (
+      event.status === "cancelled" &&
+      status === "cancelled"
+    ) {
+      return event;
+    }
+
     if (event.status === "cancelled") {
       const error = new Error(
         "No se puede cambiar el estado de un evento cancelado"
       );
+
       error.statusCode = 400;
       throw error;
     }
