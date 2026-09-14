@@ -12,6 +12,11 @@ import {
   updateEventStatus
 } from "../controllers/events.controller.js";
 
+import {
+  createTicket,
+  getTicketsByEvent
+} from "../controllers/tickets.controller.js";
+
 const router = Router();
 
 router.get("/", getEvents);
@@ -39,6 +44,20 @@ router.patch(
   authorize("organizer", "admin"),
   authorizeEventOwnerOrAdmin,
   updateEventStatus
+);
+
+router.post(
+  "/:eid/tickets",
+  auth,
+  createTicket
+);
+
+router.get(
+  "/:eid/tickets",
+  auth,
+  authorize("organizer", "admin"),
+  authorizeEventOwnerOrAdmin,
+  getTicketsByEvent
 );
 
 export default router;

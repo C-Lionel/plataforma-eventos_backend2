@@ -5,6 +5,8 @@ import cookieParser from "cookie-parser";
 import { initializePassport } from "./src/config/passport.config.js";
 import eventsRouter from "./src/routes/events.router.js";
 import sessionsRouter from "./src/routes/sessions.router.js";
+import ticketsRouter from "./src/routes/tickets.router.js";
+
 import { errorHandler } from "./src/middlewares/error.middleware.js";
 
 const app = express();
@@ -29,6 +31,7 @@ app.get("/api/health", (req, res) => {
 // Rutas
 app.use("/api/events", eventsRouter);
 app.use("/api/sessions", sessionsRouter);
+app.use("/api/tickets", ticketsRouter);
 
 // Middleware global de errores
 app.use(errorHandler);
