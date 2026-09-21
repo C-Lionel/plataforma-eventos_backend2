@@ -1,5 +1,7 @@
 import { eventsRepository } from "../repositories/events.repository.js";
 
+import { EventDTO } from "../dto/event.dto.js";
+
 class EventsService {
   async getAll(query = {}) {
     const {
@@ -92,7 +94,7 @@ class EventsService {
     });
 
     return {
-      data: result.data,
+      data: result.data.map((event) => new EventDTO(event)),
       page: parsedPage,
       limit: parsedLimit,
       total: result.total,
@@ -109,7 +111,7 @@ class EventsService {
       throw error;
     }
 
-    return event;
+    return new EventDTO(event);
   }
 
   async create(data) {
@@ -181,7 +183,9 @@ class EventsService {
       throw error;
     }
 
-    return eventsRepository.create(data);
+    const event = await eventsRepository.create(data);
+
+    return new EventDTO(event);
   }
 
   async update(id, data) {
@@ -223,7 +227,9 @@ class EventsService {
       throw error;
     }
 
-    return eventsRepository.update(id, data);
+    const updatedEvent = await eventsRepository.update(id, data);
+
+    return new EventDTO(updatedEvent);
   }
 
   async updateStatus(id, status) {
@@ -254,7 +260,7 @@ class EventsService {
       event.status === "cancelled" &&
       status === "cancelled"
     ) {
-      return event;
+      return new EventDTO(event);
     }
 
     if (event.status === "cancelled") {
@@ -280,10 +286,12 @@ class EventsService {
       throw error;
     }
 
-    return eventsRepository.update(
+    const updatedEvent = await eventsRepository.update(
       id,
       { status }
     );
+
+    return new EventDTO(updatedEvent);
   }
 }
 

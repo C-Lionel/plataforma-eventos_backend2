@@ -27,15 +27,19 @@ export const loginUser = (req, res) => {
   });
 };
 
-export const getCurrentUser = (req, res) => {
-  res.status(200).json({
-    status: "success",
-    payload: {
-      id: req.user.id,
-      email: req.user.email,
-      role: req.user.role
-    }
-  });
+export const getCurrentUser = async (req, res, next) => {
+  try {
+    const user = await sessionsService.getCurrentUser(
+      req.user.id
+    );
+
+    res.status(200).json({
+      status: "success",
+      payload: user
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const logoutUser = (req, res) => {

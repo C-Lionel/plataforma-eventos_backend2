@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import { TicketModel } from "../models/Ticket.js";
 
 class TicketsDAO {
-
   async create(data) {
     return TicketModel.create(data);
   }
@@ -11,29 +10,21 @@ class TicketsDAO {
     return TicketModel.findById(id).lean();
   }
 
-  async findByUser(userId) {
-    return TicketModel.find({
-      user: userId
-    })
-      .populate(
-        "event",
-        "title date location"
-      )
-      .lean();
+  async find(filter, populate = null) {
+    let query = TicketModel.find(filter);
+
+    if (populate) {
+      query = query.populate(
+        populate.path,
+        populate.select
+      );
+    }
+
+    return query.lean();
   }
 
-  async findByEvent(eventId) {
-    return TicketModel.find({
-      event: eventId
-    }).lean();
-  }
-
-  async findActiveByUserAndEvent(userId, eventId) {
-    return TicketModel.findOne({
-      user: userId,
-      event: eventId,
-      status: { $ne: "cancelled" }
-    }).lean();
+  async findOne(filter) {
+    return TicketModel.findOne(filter).lean();
   }
 
   async getOccupiedCapacity(eventId) {
@@ -65,7 +56,6 @@ class TicketsDAO {
       }
     ).lean();
   }
-
 }
 
 export const ticketsDAO = new TicketsDAO();

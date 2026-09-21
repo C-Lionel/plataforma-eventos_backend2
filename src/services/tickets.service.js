@@ -1,8 +1,11 @@
 import { randomUUID } from "crypto";
+
 import { ticketsRepository } from "../repositories/tickets.repository.js";
 import { eventsRepository } from "../repositories/events.repository.js";
 import { usersRepository } from "../repositories/users.repository.js";
 import { mailService } from "./mail.service.js";
+
+import { TicketDTO } from "../dto/ticket.dto.js";
 
 class TicketsService {
 
@@ -53,7 +56,7 @@ class TicketsService {
       const error = new Error(
         "El usuario ya tiene una inscripción activa para este evento"
       );
-      error.statusCode = 400;
+      error.statusCode = 409;
       throw error;
     }
 
@@ -101,16 +104,20 @@ class TicketsService {
       );
     }
 
-    return ticket;
+    return new TicketDTO(ticket);
 
   }
 
   async getMyTickets(userId) {
-    return ticketsRepository.getByUser(userId);
+    const tickets = await ticketsRepository.getByUser(userId);
+
+    return tickets.map((ticket) => new TicketDTO(ticket));
   }
 
   async getByEvent(eventId) {
-    return ticketsRepository.getByEvent(eventId);
+    const tickets = await ticketsRepository.getByEvent(eventId);
+
+    return tickets.map((ticket) => new TicketDTO(ticket));
   }
 
   async cancel(ticketId, userId, userRole) {
@@ -144,13 +151,15 @@ class TicketsService {
       throw error;
     }
 
-    return ticketsRepository.update(
+    const cancelledTicket = await ticketsRepository.update(
       ticketId,
       {
         status: "cancelled",
         cancelledAt: new Date()
       }
     );
+
+    return new TicketDTO(cancelledTicket);
   }
 
 }
